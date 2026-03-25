@@ -1,19 +1,20 @@
 package edu.moravian.csci215.tic_tac_toe
 
-
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import tictactoe.composeapp.generated.resources.Res
+import tictactoe.composeapp.generated.resources.tic_tac_toe
 
 /** The four selectable player types shown in each dropdown. */
 private val PLAYER_TYPES = listOf(
@@ -99,6 +100,7 @@ fun WelcomeScreen(
         StartButton(
             onClick = {
                 if (player1Name.isBlank() || player2Name.isBlank()) {
+                    // Show error snackbar without starting the game
                     scope.launch { showSnackbar(AppStrings.EMPTY_NAME_ERROR) }
                 } else {
                     onStartGame(player1Type, player1Name, player2Type, player2Name)
@@ -108,27 +110,16 @@ fun WelcomeScreen(
     }
 }
 
-
 /**
- * Decorative XO logo displayed at the top of the welcome screen.
- * Built entirely from Text composables so no image asset is needed.
+ * App logo displayed at the top of the welcome screen.
  */
 @Composable
 private fun XOLogo() {
-    Box(
-        modifier = Modifier
-            .size(80.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text      = "XO\nOX",
-            style     = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-            color     = MaterialTheme.colorScheme.onPrimary,
-            textAlign = TextAlign.Center
-        )
-    }
+    Image(
+        painter            = painterResource(Res.drawable.tic_tac_toe),
+        contentDescription = AppStrings.APP_TITLE,
+        modifier           = Modifier.size(120.dp)
+    )
 }
 
 /**

@@ -10,10 +10,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -22,20 +20,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import edu.moravian.csci215.tic_tac_toe.game.Board
 import edu.moravian.csci215.tic_tac_toe.game.Board.Companion.toStringRepresentation
-
-private val AppPrimary    = Color(0xFF6B3FA0)
-private val AppOnPrimary  = Color(0xFFFFFFFF)
-private val AppSurface    = Color(0xFFF3EAF9)
-private val AppBackground = Color(0xFFEDE0F5)
-
-private val TicTacToeColorScheme = lightColorScheme(
-    primary      = AppPrimary,
-    onPrimary    = AppOnPrimary,
-    surface      = AppSurface,
-    background   = AppBackground,
-    onSurface    = AppPrimary,
-    onBackground = AppPrimary,
-)
 
 /** Navigation route constants for the three app screens. */
 internal object Routes {
@@ -65,17 +49,6 @@ internal object Routes {
     ) = "gameOver/$p1Type/$p1Name/$p2Type/$p2Name/$p1Wins/$p2Wins/$ties/${board.toStringRepresentation()}"
 }
 
-
-/**
- * Wraps content in the app's custom MaterialTheme.
- * @param content the content to display
- */
-@Composable
-fun TicTacToeTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = TicTacToeColorScheme, content = content)
-}
-
-
 /**
  * Root composable for the app. Sets up the theme, shared Scaffold, and the
  * navigation graph. The Scaffold is intentionally placed *outside* the NavHost
@@ -91,7 +64,7 @@ fun App() {
     // Show the back-arrow top bar on every screen except the Welcome screen
     val showTopBar = currentRoute != null && !currentRoute.startsWith(Routes.WELCOME)
 
-    TicTacToeTheme {
+    AppTheme {
         AppScaffold(
             snackbarHostState = snackbarHostState,
             topBar = {
@@ -130,6 +103,7 @@ fun App() {
                     )
                 }
 
+                // ── Game Screen ────────────────────────────────────────────
                 composable(
                     route     = Routes.GAME,
                     arguments = listOf(
@@ -170,7 +144,6 @@ fun App() {
                         }
                     )
                 }
-
                 composable(
                     route     = Routes.GAME_OVER,
                     arguments = listOf(

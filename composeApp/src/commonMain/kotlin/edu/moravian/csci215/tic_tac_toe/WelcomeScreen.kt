@@ -3,7 +3,10 @@ package edu.moravian.csci215.tic_tac_toe
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +24,7 @@ private val PLAYER_TYPES = listOf(
     AppStrings.HUMAN,
     AppStrings.EASY_AI,
     AppStrings.MEDIUM_AI,
-    AppStrings.HARD_AI
+    AppStrings.HARD_AI,
 )
 
 /** Returns a randomly chosen player name. */
@@ -40,7 +43,7 @@ private fun randomName(): String = RANDOM_NAMES.random()
 fun WelcomeScreen(
     paddingValues: PaddingValues,
     onStartGame: (String, String, String, String) -> Unit,
-    showSnackbar: suspend (String) -> Unit
+    showSnackbar: suspend (String) -> Unit,
 ) {
     var player1Type by remember { mutableStateOf(PLAYER_TYPES[0]) }
     var player1Name by remember { mutableStateOf(randomName()) }
@@ -48,65 +51,73 @@ fun WelcomeScreen(
     var player2Name by remember { mutableStateOf(randomName()) }
     val scope = rememberCoroutineScope()
 
-    Column(
+    // BoxWithConstraints lets us detect landscape in common (KMP-compatible) code
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primary)
-            .padding(paddingValues)
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(paddingValues),
     ) {
-        // XO logo
-        XOLogo()
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Title
-        Text(
-            text      = AppStrings.WELCOME_TITLE,
-            style     = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-            color     = MaterialTheme.colorScheme.onPrimary,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Row(
-            modifier            = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment   = Alignment.Top
+        val isLandscape = maxWidth > maxHeight
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = maxHeight) // centers content vertically
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            PlayerSetupColumn(
-                label          = AppStrings.PLAYER_1_LABEL,
-                nameLabel      = AppStrings.PLAYER_1_NAME,
-                selectedType   = player1Type,
-                onTypeSelected = { player1Type = it },
-                name           = player1Name,
-                onNameChanged  = { player1Name = it }
+            // Hide the logo in landscape to save vertical space
+            if (!isLandscape) {
+                XOLogo()
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            Text(
+                text = AppStrings.WELCOME_TITLE,
+                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onPrimary,
+                textAlign = TextAlign.Center,
             )
-            PlayerSetupColumn(
-                label          = AppStrings.PLAYER_2_LABEL,
-                nameLabel      = AppStrings.PLAYER_2_NAME,
-                selectedType   = player2Type,
-                onTypeSelected = { player2Type = it },
-                name           = player2Name,
-                onNameChanged  = { player2Name = it }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.Top,
+            ) {
+                PlayerSetupColumn(
+                    label = AppStrings.PLAYER_1_LABEL,
+                    nameLabel = AppStrings.PLAYER_1_NAME,
+                    selectedType = player1Type,
+                    onTypeSelected = { player1Type = it },
+                    name = player1Name,
+                    onNameChanged = { player1Name = it },
+                )
+                PlayerSetupColumn(
+                    label = AppStrings.PLAYER_2_LABEL,
+                    nameLabel = AppStrings.PLAYER_2_NAME,
+                    selectedType = player2Type,
+                    onTypeSelected = { player2Type = it },
+                    name = player2Name,
+                    onNameChanged = { player2Name = it },
+                )
+            }
+
+            Spacer(modifier = Modifier.height(36.dp))
+
+            StartButton(
+                onClick = {
+                    if (player1Name.isBlank() || player2Name.isBlank()) {
+                        scope.launch { showSnackbar(AppStrings.EMPTY_NAME_ERROR) }
+                    } else {
+                        onStartGame(player1Type, player1Name, player2Type, player2Name)
+                    }
+                },
             )
         }
-
-        Spacer(modifier = Modifier.height(36.dp))
-
-        StartButton(
-            onClick = {
-                if (player1Name.isBlank() || player2Name.isBlank()) {
-                    // Show error snackbar without starting the game
-                    scope.launch { showSnackbar(AppStrings.EMPTY_NAME_ERROR) }
-                } else {
-                    onStartGame(player1Type, player1Name, player2Type, player2Name)
-                }
-            }
-        )
     }
 }
 
@@ -116,9 +127,9 @@ fun WelcomeScreen(
 @Composable
 private fun XOLogo() {
     Image(
-        painter            = painterResource(Res.drawable.tic_tac_toe),
+        painter = painterResource(Res.drawable.tic_tac_toe),
         contentDescription = AppStrings.APP_TITLE,
-        modifier           = Modifier.size(120.dp)
+        modifier = Modifier.size(120.dp),
     )
 }
 
@@ -139,25 +150,25 @@ private fun PlayerSetupColumn(
     selectedType: String,
     onTypeSelected: (String) -> Unit,
     name: String,
-    onNameChanged: (String) -> Unit
+    onNameChanged: (String) -> Unit,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text  = label,
+            text = label,
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimary
+            color = MaterialTheme.colorScheme.onPrimary,
         )
         PlayerTypeDropDown(
-            selectedType   = selectedType,
-            onTypeSelected = onTypeSelected
+            selectedType = selectedType,
+            onTypeSelected = onTypeSelected,
         )
         PlayerNameTextField(
-            label         = nameLabel,
-            name          = name,
-            onNameChanged = onNameChanged
+            label = nameLabel,
+            name = name,
+            onNameChanged = onNameChanged,
         )
     }
 }
@@ -171,34 +182,34 @@ private fun PlayerSetupColumn(
 @Composable
 private fun PlayerTypeDropDown(
     selectedType: String,
-    onTypeSelected: (String) -> Unit
+    onTypeSelected: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     Box {
         OutlinedButton(
             onClick = { expanded = true },
-            colors  = ButtonDefaults.outlinedButtonColors(
+            colors = ButtonDefaults.outlinedButtonColors(
                 containerColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f),
-                contentColor   = MaterialTheme.colorScheme.onPrimary
+                contentColor = MaterialTheme.colorScheme.onPrimary,
             ),
-            shape = RoundedCornerShape(50)
+            shape = RoundedCornerShape(50),
         ) {
             Text(selectedType)
             Spacer(modifier = Modifier.width(4.dp))
-            Text("▾") // simple dropdown indicator
+            Text("▾")
         }
         DropdownMenu(
-            expanded        = expanded,
-            onDismissRequest = { expanded = false }
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
         ) {
             PLAYER_TYPES.forEach { type ->
                 DropdownMenuItem(
-                    text    = { Text(type) },
+                    text = { Text(type) },
                     onClick = {
                         onTypeSelected(type)
                         expanded = false
-                    }
+                    },
                 )
             }
         }
@@ -216,23 +227,23 @@ private fun PlayerTypeDropDown(
 private fun PlayerNameTextField(
     label: String,
     name: String,
-    onNameChanged: (String) -> Unit
+    onNameChanged: (String) -> Unit,
 ) {
     TextField(
-        value         = name,
+        value = name,
         onValueChange = onNameChanged,
-        label         = { Text(label) },
-        singleLine    = true,
-        shape         = RoundedCornerShape(50),
-        colors        = TextFieldDefaults.colors(
-            unfocusedContainerColor   = MaterialTheme.colorScheme.onPrimary,
-            focusedContainerColor     = MaterialTheme.colorScheme.onPrimary,
-            unfocusedIndicatorColor   = androidx.compose.ui.graphics.Color.Transparent,
-            focusedIndicatorColor     = androidx.compose.ui.graphics.Color.Transparent,
-            unfocusedLabelColor       = MaterialTheme.colorScheme.primary,
-            focusedLabelColor         = MaterialTheme.colorScheme.primary
+        label = { Text(label) },
+        singleLine = true,
+        shape = RoundedCornerShape(50),
+        colors = TextFieldDefaults.colors(
+            unfocusedContainerColor = MaterialTheme.colorScheme.onPrimary,
+            focusedContainerColor = MaterialTheme.colorScheme.onPrimary,
+            unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+            focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+            unfocusedLabelColor = MaterialTheme.colorScheme.primary,
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
         ),
-        modifier = Modifier.width(140.dp)
+        modifier = Modifier.width(140.dp),
     )
 }
 
@@ -245,18 +256,18 @@ private fun PlayerNameTextField(
 private fun StartButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        shape   = RoundedCornerShape(50),
-        colors  = ButtonDefaults.buttonColors(
+        shape = RoundedCornerShape(50),
+        colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.onPrimary,
-            contentColor   = MaterialTheme.colorScheme.primary
+            contentColor = MaterialTheme.colorScheme.primary,
         ),
         modifier = Modifier
             .defaultMinSize(minWidth = 140.dp)
-            .height(52.dp)
+            .height(52.dp),
     ) {
         Text(
-            text  = AppStrings.START_BUTTON,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            text = AppStrings.START_BUTTON,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
         )
     }
 }

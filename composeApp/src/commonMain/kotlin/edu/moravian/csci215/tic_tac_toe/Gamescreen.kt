@@ -2,7 +2,6 @@ package edu.moravian.csci215.tic_tac_toe
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,10 +22,10 @@ import kotlinx.coroutines.launch
 
 /** Converts a player-type string (from navigation args) to a [Player] instance. */
 private fun playerFromType(type: String): Player = when (type) {
-    AppStrings.EASY_AI   -> EasyAIPlayer()
+    AppStrings.EASY_AI -> EasyAIPlayer()
     AppStrings.MEDIUM_AI -> MediumAIPlayer()
-    AppStrings.HARD_AI   -> HardAIPlayer()
-    else                 -> HumanPlayer()
+    AppStrings.HARD_AI -> HardAIPlayer()
+    else -> HumanPlayer()
 }
 
 /**
@@ -59,7 +58,7 @@ fun GameScreen(
     player2Wins: Int,
     ties: Int,
     showSnackbar: suspend (String) -> Unit,
-    onGameOver: (Int, Int, Int, Board) -> Unit
+    onGameOver: (Int, Int, Int, Board) -> Unit,
 ) {
     var board by remember { mutableStateOf(Board()) }
     var isAiThinking by remember { mutableStateOf(false) }
@@ -74,7 +73,7 @@ fun GameScreen(
             delay(600L) // let the player see the final state
             val newP1Wins = player1Wins + if (board.hasWon('X')) 1 else 0
             val newP2Wins = player2Wins + if (board.hasWon('O')) 1 else 0
-            val newTies   = ties        + if (board.hasTied)     1 else 0
+            val newTies = ties + if (board.hasTied) 1 else 0
             onGameOver(newP1Wins, newP2Wins, newTies, board)
             return@LaunchedEffect
         }
@@ -93,10 +92,15 @@ fun GameScreen(
     val onCellTapped: (Int, Int) -> Unit = { r, c ->
         when {
             // AI is mid-move; reject input
-            isAiThinking -> scope.launch { showSnackbar(AppStrings.AI_THINKING_ERROR) }
-            // Current turn belongs to an AI (shouldn't normally be reachable, but guard anyway)
-            (if (board.turn == 'X') player1 else player2) is AIPlayer ->
+            isAiThinking -> {
                 scope.launch { showSnackbar(AppStrings.AI_THINKING_ERROR) }
+            }
+
+            // Current turn belongs to an AI (shouldn't normally be reachable, but guard anyway)
+            (if (board.turn == 'X') player1 else player2) is AIPlayer -> {
+                scope.launch { showSnackbar(AppStrings.AI_THINKING_ERROR) }
+            }
+
             // Try to play; null means spot was already taken
             else -> {
                 val newBoard = board.playPiece(r, c)
@@ -115,50 +119,58 @@ fun GameScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(paddingValues)
+            .padding(paddingValues),
     ) {
         val isLandscape = maxWidth > maxHeight
 
         if (isLandscape) {
-            // In landscape: turn indicator on the left, board on the right
+            // In landscape: turn indicator on the left, board centered on the right
             Row(
                 modifier = Modifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 TurnIndicator(
-                    name     = currentName,
-                    piece    = board.turn,
+                    name = currentName,
+                    piece = board.turn,
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight()
+                        .fillMaxHeight(),
                 )
-                BoardGrid(
-                    board        = board,
-                    onCellTapped = onCellTapped,
-                    modifier     = Modifier
+                // Wrap the board in a Box so it stays square and centered
+                Box(
+                    modifier = Modifier
                         .weight(2f)
-                        .padding(16.dp)
-                )
+                        .fillMaxHeight()
+                        .padding(8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    BoardGrid(
+                        board = board,
+                        onCellTapped = onCellTapped,
+                        modifier = Modifier.fillMaxHeight(),
+                    )
+                }
             }
         } else {
             // In portrait: turn indicator on top, board below
             Column(
-                modifier            = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 TurnIndicator(
-                    name     = currentName,
-                    piece    = board.turn,
+                    name = currentName,
+                    piece = board.turn,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 24.dp)
+                        .padding(vertical = 24.dp),
                 )
                 BoardGrid(
-                    board        = board,
+                    board = board,
                     onCellTapped = onCellTapped,
-                    modifier     = Modifier
+                    modifier = Modifier
                         .weight(1f)
-                        .padding(16.dp)
+                        .padding(16.dp),
                 )
             }
         }
@@ -176,11 +188,11 @@ fun GameScreen(
 private fun TurnIndicator(name: String, piece: Char, modifier: Modifier = Modifier) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Text(
-            text      = "$name, play your $piece",
-            style     = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-            color     = MaterialTheme.colorScheme.primary,
+            text = "$name, play your $piece",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
-            modifier  = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier.padding(horizontal = 16.dp),
         )
     }
 }
@@ -197,17 +209,17 @@ private fun TurnIndicator(name: String, piece: Char, modifier: Modifier = Modifi
 private fun BoardGrid(
     board: Board,
     onCellTapped: (Int, Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.aspectRatio(1f) // always square
+        modifier = modifier.aspectRatio(1f), // always square
     ) {
         for (r in 0..2) {
             // Draw a horizontal divider between rows (not before the first row)
             if (r > 0) {
                 HorizontalDivider(
                     thickness = 3.dp,
-                    color     = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                 )
             }
             Row(modifier = Modifier.weight(1f)) {
@@ -216,15 +228,15 @@ private fun BoardGrid(
                     if (c > 0) {
                         VerticalDivider(
                             thickness = 3.dp,
-                            color     = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                         )
                     }
                     BoardCell(
-                        piece    = board[r, c],
-                        onClick  = { onCellTapped(r, c) },
+                        piece = board[r, c],
+                        onClick = { onCellTapped(r, c) },
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight()
+                            .fillMaxHeight(),
                     )
                 }
             }
@@ -244,25 +256,25 @@ private fun BoardGrid(
 private fun BoardCell(
     piece: Char,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Button(
-        onClick   = onClick,
-        modifier  = modifier,
-        shape     = RectangleShape, // no rounded corners so grid lines stay straight
+        onClick = onClick,
+        modifier = modifier,
+        shape = RectangleShape, // no rounded corners so grid lines stay straight
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-        colors    = ButtonDefaults.buttonColors(
+        colors = ButtonDefaults.buttonColors(
             // Empty cells blend into the background; occupied cells stay the same
             containerColor = MaterialTheme.colorScheme.background,
-            contentColor   = MaterialTheme.colorScheme.primary
-        )
+            contentColor = MaterialTheme.colorScheme.primary,
+        ),
     ) {
         if (piece != ' ') {
             Text(
-                text  = piece.toString(),
+                text = piece.toString(),
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontWeight = FontWeight.ExtraBold
-                )
+                    fontWeight = FontWeight.ExtraBold,
+                ),
             )
         }
     }

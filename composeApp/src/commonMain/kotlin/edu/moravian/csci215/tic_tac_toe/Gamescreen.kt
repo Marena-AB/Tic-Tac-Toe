@@ -1,26 +1,52 @@
 package edu.moravian.csci215.tic_tac_toe
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import edu.moravian.csci215.tic_tac_toe.game.AIPlayer
+import edu.moravian.csci215.tic_tac_toe.game.Board
+import edu.moravian.csci215.tic_tac_toe.game.EasyAIPlayer
+import edu.moravian.csci215.tic_tac_toe.game.HardAIPlayer
+import edu.moravian.csci215.tic_tac_toe.game.HumanPlayer
+import edu.moravian.csci215.tic_tac_toe.game.MediumAIPlayer
+import edu.moravian.csci215.tic_tac_toe.game.Player
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/** Converts a player-type string (from navigation args) to a [Player] instance. */
+private fun playerFromType(type: String): Player = when (type) {
+    AppStrings.EASY_AI   -> EasyAIPlayer()
+    AppStrings.MEDIUM_AI -> MediumAIPlayer()
+    AppStrings.HARD_AI   -> HardAIPlayer()
+    else                 -> HumanPlayer()
+}
 
 /**
- * The game screen where the actual Tic-Tac-Toe board is played.
- * TODO: implement the board UI, turn logic, and AI delay.
+ * The game screen where the Tic-Tac-Toe match is played.
  *
- * @param paddingValues  insets from the outer Scaffold
- * @param player1Type    type string for player 1 (Human / Easy AI / etc.)
- * @param player1Name    display name for player 1
- * @param player2Type    type string for player 2
- * @param player2Name    display name for player 2
- * @param showSnackbar   suspending callback to display error snackbars
- * @param onGameOver     called with (p1Wins, p2Wins, ties) when the round ends
+ * Player 1 always plays 'X' (goes first); Player 2 always plays 'O'.
+ * Human moves are handled by tapping a cell; AI moves happen automatically
+ * after a short delay. The layout switches between portrait (indicator above
+ * the board) and landscape (indicator to the side) automatically.
+ *
+ * @param paddingValues insets from the outer Scaffold
+ * @param player1Type   type string for player 1 (Human / Easy AI / etc.)
+ * @param player1Name   display name for player 1
+ * @param player2Type   type string for player 2
+ * @param player2Name   display name for player 2
+ * @param player1Wins   cumulative wins for player 1 coming into this round
+ * @param player2Wins   cumulative wins for player 2 coming into this round
+ * @param ties          cumulative tied rounds coming into this round
+ * @param showSnackbar  suspending callback to show error snackbars
+ * @param onGameOver    called with updated (p1Wins, p2Wins, ties) when the round ends
  */
 @Composable
 fun GameScreen(
@@ -29,19 +55,215 @@ fun GameScreen(
     player1Name: String,
     player2Type: String,
     player2Name: String,
+    player1Wins: Int,
+    player2Wins: Int,
+    ties: Int,
     showSnackbar: suspend (String) -> Unit,
-    onGameOver: (Int, Int, Int) -> Unit
+    onGameOver: (Int, Int, Int, Board) -> Unit
 ) {
-    // TODO: build board, turn indicator, AI logic
-    Box(
+    var board by remember { mutableStateOf(Board()) }
+    var isAiThinking by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // Create player objects once; type strings don't change mid-game
+    val player1 = remember { playerFromType(player1Type) }
+    val player2 = remember { playerFromType(player2Type) }
+
+    LaunchedEffect(board) {
+        if (board.isGameOver) {
+            delay(600L) // let the player see the final state
+            val newP1Wins = player1Wins + if (board.hasWon('X')) 1 else 0
+            val newP2Wins = player2Wins + if (board.hasWon('O')) 1 else 0
+            val newTies   = ties        + if (board.hasTied)     1 else 0
+            onGameOver(newP1Wins, newP2Wins, newTies, board)
+            return@LaunchedEffect
+        }
+
+        // Determine whose turn it is and play if it is an AI
+        val currentPlayer = if (board.turn == 'X') player1 else player2
+        if (currentPlayer is AIPlayer) {
+            isAiThinking = true
+            delay(700L) // short pause so moves feel deliberate
+            val (r, c) = currentPlayer.findMove(board, board.turn)
+            board = board.playPiece(r, c) ?: board
+            isAiThinking = false
+        }
+    }
+
+    val onCellTapped: (Int, Int) -> Unit = { r, c ->
+        when {
+            // AI is mid-move; reject input
+            isAiThinking -> scope.launch { showSnackbar(AppStrings.AI_THINKING_ERROR) }
+            // Current turn belongs to an AI (shouldn't normally be reachable, but guard anyway)
+            (if (board.turn == 'X') player1 else player2) is AIPlayer ->
+                scope.launch { showSnackbar(AppStrings.AI_THINKING_ERROR) }
+            // Try to play; null means spot was already taken
+            else -> {
+                val newBoard = board.playPiece(r, c)
+                if (newBoard == null) {
+                    scope.launch { showSnackbar(AppStrings.SPOT_TAKEN_ERROR) }
+                } else {
+                    board = newBoard // triggers LaunchedEffect for game-over check
+                }
+            }
+        }
+    }
+
+    val currentName = if (board.turn == 'X') player1Name else player2Name
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues),
-        contentAlignment = Alignment.Center
+            .background(MaterialTheme.colorScheme.background)
+            .padding(paddingValues)
     ) {
+        val isLandscape = maxWidth > maxHeight
+
+        if (isLandscape) {
+            // In landscape: turn indicator on the left, board on the right
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TurnIndicator(
+                    name     = currentName,
+                    piece    = board.turn,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                )
+                BoardGrid(
+                    board        = board,
+                    onCellTapped = onCellTapped,
+                    modifier     = Modifier
+                        .weight(2f)
+                        .padding(16.dp)
+                )
+            }
+        } else {
+            // In portrait: turn indicator on top, board below
+            Column(
+                modifier            = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                TurnIndicator(
+                    name     = currentName,
+                    piece    = board.turn,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp)
+                )
+                BoardGrid(
+                    board        = board,
+                    onCellTapped = onCellTapped,
+                    modifier     = Modifier
+                        .weight(1f)
+                        .padding(16.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Displays whose turn it is in a descriptive format, e.g. "Inky, play your X".
+ *
+ * @param name     the current player's name
+ * @param piece    the current player's piece ('X' or 'O')
+ * @param modifier layout modifier applied to the container
+ */
+@Composable
+private fun TurnIndicator(name: String, piece: Char, modifier: Modifier = Modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Text(
-            text  = "Game Screen\n$player1Name vs $player2Name",
-            style = MaterialTheme.typography.headlineSmall
+            text      = "$name, play your $piece",
+            style     = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+            color     = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center,
+            modifier  = Modifier.padding(horizontal = 16.dp)
         )
+    }
+}
+
+/**
+ * Renders the 3×3 game board as a square grid of [BoardCell]s separated by
+ * colored divider lines.
+ *
+ * @param board        the current board state
+ * @param onCellTapped called with (row, col) when the player taps a cell
+ * @param modifier     layout modifier applied to the grid container
+ */
+@Composable
+private fun BoardGrid(
+    board: Board,
+    onCellTapped: (Int, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.aspectRatio(1f) // always square
+    ) {
+        for (r in 0..2) {
+            // Draw a horizontal divider between rows (not before the first row)
+            if (r > 0) {
+                HorizontalDivider(
+                    thickness = 3.dp,
+                    color     = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                )
+            }
+            Row(modifier = Modifier.weight(1f)) {
+                for (c in 0..2) {
+                    // Draw a vertical divider between columns (not before the first column)
+                    if (c > 0) {
+                        VerticalDivider(
+                            thickness = 3.dp,
+                            color     = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                        )
+                    }
+                    BoardCell(
+                        piece    = board[r, c],
+                        onClick  = { onCellTapped(r, c) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A single cell in the board grid. Displays the piece ('X' or 'O') if one has
+ * been played, or appears blank to blend into the background when empty.
+ *
+ * @param piece    the piece at this cell: 'X', 'O', or ' ' (empty)
+ * @param onClick  called when the user taps this cell
+ * @param modifier layout modifier
+ */
+@Composable
+private fun BoardCell(
+    piece: Char,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick   = onClick,
+        modifier  = modifier,
+        shape     = RectangleShape, // no rounded corners so grid lines stay straight
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+        colors    = ButtonDefaults.buttonColors(
+            // Empty cells blend into the background; occupied cells stay the same
+            containerColor = MaterialTheme.colorScheme.background,
+            contentColor   = MaterialTheme.colorScheme.primary
+        )
+    ) {
+        if (piece != ' ') {
+            Text(
+                text  = piece.toString(),
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontWeight = FontWeight.ExtraBold
+                )
+            )
+        }
     }
 }

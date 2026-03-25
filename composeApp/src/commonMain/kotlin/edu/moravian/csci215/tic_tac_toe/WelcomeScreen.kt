@@ -99,7 +99,6 @@ fun WelcomeScreen(
         StartButton(
             onClick = {
                 if (player1Name.isBlank() || player2Name.isBlank()) {
-                    // Show error snackbar without starting the game
                     scope.launch { showSnackbar(AppStrings.EMPTY_NAME_ERROR) }
                 } else {
                     onStartGame(player1Type, player1Name, player2Type, player2Name)

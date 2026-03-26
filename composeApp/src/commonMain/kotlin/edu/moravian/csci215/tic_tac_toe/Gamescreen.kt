@@ -19,14 +19,25 @@ import edu.moravian.csci215.tic_tac_toe.game.MediumAIPlayer
 import edu.moravian.csci215.tic_tac_toe.game.Player
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import tictactoe.composeapp.generated.resources.Res
+import tictactoe.composeapp.generated.resources.ai_thinking_error
+import tictactoe.composeapp.generated.resources.easy_ai
+import tictactoe.composeapp.generated.resources.hard_ai
+import tictactoe.composeapp.generated.resources.medium_ai
+import tictactoe.composeapp.generated.resources.spot_taken_error
 
-/** Converts a player-type string (from navigation args) to a [Player] instance. */
-private fun playerFromType(type: String): Player = when (type) {
-    AppStrings.EASY_AI -> EasyAIPlayer()
-    AppStrings.MEDIUM_AI -> MediumAIPlayer()
-    AppStrings.HARD_AI -> HardAIPlayer()
-    else -> HumanPlayer()
-}
+/**
+ * Converts a player-type string (from navigation args) to a [Player] instance.
+ * Note: these strings must match exactly what is stored in the string resources.
+ */
+private fun playerFromType(type: String, easyAi: String, mediumAi: String, hardAi: String): Player =
+    when (type) {
+        easyAi -> EasyAIPlayer()
+        mediumAi -> MediumAIPlayer()
+        hardAi -> HardAIPlayer()
+        else -> HumanPlayer()
+    }
 
 /**
  * The game screen where the Tic-Tac-Toe match is played.
@@ -45,7 +56,7 @@ private fun playerFromType(type: String): Player = when (type) {
  * @param player2Wins   cumulative wins for player 2 coming into this round
  * @param ties          cumulative tied rounds coming into this round
  * @param showSnackbar  suspending callback to show error snackbars
- * @param onGameOver    called with updated (p1Wins, p2Wins, ties) when the round ends
+ * @param onGameOver    called with updated (p1Wins, p2Wins, ties, board) when the round ends
  */
 @Composable
 fun GameScreen(
@@ -60,14 +71,21 @@ fun GameScreen(
     showSnackbar: suspend (String) -> Unit,
     onGameOver: (Int, Int, Int, Board) -> Unit,
 ) {
+    val easyAi = stringResource(Res.string.easy_ai)
+    val mediumAi = stringResource(Res.string.medium_ai)
+    val hardAi = stringResource(Res.string.hard_ai)
+    val spotTakenError = stringResource(Res.string.spot_taken_error)
+    val aiThinkingError = stringResource(Res.string.ai_thinking_error)
+
     var board by remember { mutableStateOf(Board()) }
     var isAiThinking by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // Create player objects once; type strings don't change mid-game
-    val player1 = remember { playerFromType(player1Type) }
-    val player2 = remember { playerFromType(player2Type) }
+    val player1 = remember { playerFromType(player1Type, easyAi, mediumAi, hardAi) }
+    val player2 = remember { playerFromType(player2Type, easyAi, mediumAi, hardAi) }
 
+    // Re-runs every time the board changes. Handles game-over and AI turns.
     LaunchedEffect(board) {
         if (board.isGameOver) {
             delay(600L) // let the player see the final state
@@ -78,7 +96,7 @@ fun GameScreen(
             return@LaunchedEffect
         }
 
-        // Determine whose turn it is and play if it is an AI
+        // Play AI move if it is an AI's turn
         val currentPlayer = if (board.turn == 'X') player1 else player2
         if (currentPlayer is AIPlayer) {
             isAiThinking = true
@@ -91,23 +109,20 @@ fun GameScreen(
 
     val onCellTapped: (Int, Int) -> Unit = { r, c ->
         when {
-            // AI is mid-move; reject input
             isAiThinking -> {
-                scope.launch { showSnackbar(AppStrings.AI_THINKING_ERROR) }
+                scope.launch { showSnackbar(aiThinkingError) }
             }
 
-            // Current turn belongs to an AI (shouldn't normally be reachable, but guard anyway)
             (if (board.turn == 'X') player1 else player2) is AIPlayer -> {
-                scope.launch { showSnackbar(AppStrings.AI_THINKING_ERROR) }
+                scope.launch { showSnackbar(aiThinkingError) }
             }
 
-            // Try to play; null means spot was already taken
             else -> {
                 val newBoard = board.playPiece(r, c)
                 if (newBoard == null) {
-                    scope.launch { showSnackbar(AppStrings.SPOT_TAKEN_ERROR) }
+                    scope.launch { showSnackbar(spotTakenError) }
                 } else {
-                    board = newBoard // triggers LaunchedEffect for game-over check
+                    board = newBoard
                 }
             }
         }
@@ -124,7 +139,6 @@ fun GameScreen(
         val isLandscape = maxWidth > maxHeight
 
         if (isLandscape) {
-            // In landscape: turn indicator on the left, board centered on the right
             Row(
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -133,16 +147,10 @@ fun GameScreen(
                 TurnIndicator(
                     name = currentName,
                     piece = board.turn,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                 )
-                // Wrap the board in a Box so it stays square and centered
                 Box(
-                    modifier = Modifier
-                        .weight(2f)
-                        .fillMaxHeight()
-                        .padding(8.dp),
+                    modifier = Modifier.weight(2f).fillMaxHeight().padding(8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     BoardGrid(
@@ -153,7 +161,6 @@ fun GameScreen(
                 }
             }
         } else {
-            // In portrait: turn indicator on top, board below
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -161,16 +168,12 @@ fun GameScreen(
                 TurnIndicator(
                     name = currentName,
                     piece = board.turn,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                 )
                 BoardGrid(
                     board = board,
                     onCellTapped = onCellTapped,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(16.dp),
+                    modifier = Modifier.weight(1f).padding(16.dp),
                 )
             }
         }
@@ -211,11 +214,8 @@ private fun BoardGrid(
     onCellTapped: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.aspectRatio(1f), // always square
-    ) {
+    Column(modifier = modifier.aspectRatio(1f)) {
         for (r in 0..2) {
-            // Draw a horizontal divider between rows (not before the first row)
             if (r > 0) {
                 HorizontalDivider(
                     thickness = 3.dp,
@@ -224,7 +224,6 @@ private fun BoardGrid(
             }
             Row(modifier = Modifier.weight(1f)) {
                 for (c in 0..2) {
-                    // Draw a vertical divider between columns (not before the first column)
                     if (c > 0) {
                         VerticalDivider(
                             thickness = 3.dp,
@@ -234,9 +233,7 @@ private fun BoardGrid(
                     BoardCell(
                         piece = board[r, c],
                         onClick = { onCellTapped(r, c) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                     )
                 }
             }
@@ -261,10 +258,9 @@ private fun BoardCell(
     Button(
         onClick = onClick,
         modifier = modifier,
-        shape = RectangleShape, // no rounded corners so grid lines stay straight
+        shape = RectangleShape,
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
         colors = ButtonDefaults.buttonColors(
-            // Empty cells blend into the background; occupied cells stay the same
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.primary,
         ),

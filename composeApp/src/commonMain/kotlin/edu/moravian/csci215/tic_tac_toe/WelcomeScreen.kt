@@ -3,7 +3,6 @@ package edu.moravian.csci215.tic_tac_toe
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -16,15 +15,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import tictactoe.composeapp.generated.resources.Res
-import tictactoe.composeapp.generated.resources.tic_tac_toe
+import org.jetbrains.compose.resources.stringResource
+import tictactoe.composeapp.generated.resources.*
 
 /** The four selectable player types shown in each dropdown. */
-private val PLAYER_TYPES = listOf(
-    AppStrings.HUMAN,
-    AppStrings.EASY_AI,
-    AppStrings.MEDIUM_AI,
-    AppStrings.HARD_AI,
+@Composable
+private fun playerTypes() = listOf(
+    stringResource(Res.string.human),
+    stringResource(Res.string.easy_ai),
+    stringResource(Res.string.medium_ai),
+    stringResource(Res.string.hard_ai),
 )
 
 /** Returns a randomly chosen player name. */
@@ -35,8 +35,8 @@ private fun randomName(): String = RANDOM_NAMES.random()
  * There is intentionally no top app bar on this screen.
  *
  * @param paddingValues insets supplied by the outer Scaffold
- * @param onStartGame   called with (p1Type, p1Name, p2Type, p2Name) when Start is tapped and
- *                      both names are non-blank
+ * @param onStartGame   called with (p1Type, p1Name, p2Type, p2Name) when Start is tapped
+ *                      and both names are non-blank
  * @param showSnackbar  suspending callback to display a snackbar message via the shared host
  */
 @Composable
@@ -45,13 +45,14 @@ fun WelcomeScreen(
     onStartGame: (String, String, String, String) -> Unit,
     showSnackbar: suspend (String) -> Unit,
 ) {
-    var player1Type by remember { mutableStateOf(PLAYER_TYPES[0]) }
+    val playerTypes = playerTypes()
+    var player1Type by remember { mutableStateOf(playerTypes[0]) }
     var player1Name by remember { mutableStateOf(randomName()) }
-    var player2Type by remember { mutableStateOf(PLAYER_TYPES[0]) }
+    var player2Type by remember { mutableStateOf(playerTypes[0]) }
     var player2Name by remember { mutableStateOf(randomName()) }
     val scope = rememberCoroutineScope()
+    val emptyNameError = stringResource(Res.string.empty_name_error)
 
-    // BoxWithConstraints lets us detect landscape in common (KMP-compatible) code
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -62,7 +63,7 @@ fun WelcomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .defaultMinSize(minHeight = maxHeight) // centers content vertically
+                .defaultMinSize(minHeight = maxHeight)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -75,7 +76,7 @@ fun WelcomeScreen(
             }
 
             Text(
-                text = AppStrings.WELCOME_TITLE,
+                text = stringResource(Res.string.welcome_title),
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onPrimary,
                 textAlign = TextAlign.Center,
@@ -89,20 +90,22 @@ fun WelcomeScreen(
                 verticalAlignment = Alignment.Top,
             ) {
                 PlayerSetupColumn(
-                    label = AppStrings.PLAYER_1_LABEL,
-                    nameLabel = AppStrings.PLAYER_1_NAME,
+                    label = stringResource(Res.string.player_1_label),
+                    nameLabel = stringResource(Res.string.player_1_name),
                     selectedType = player1Type,
                     onTypeSelected = { player1Type = it },
                     name = player1Name,
                     onNameChanged = { player1Name = it },
+                    playerTypes = playerTypes,
                 )
                 PlayerSetupColumn(
-                    label = AppStrings.PLAYER_2_LABEL,
-                    nameLabel = AppStrings.PLAYER_2_NAME,
+                    label = stringResource(Res.string.player_2_label),
+                    nameLabel = stringResource(Res.string.player_2_name),
                     selectedType = player2Type,
                     onTypeSelected = { player2Type = it },
                     name = player2Name,
                     onNameChanged = { player2Name = it },
+                    playerTypes = playerTypes,
                 )
             }
 
@@ -111,7 +114,7 @@ fun WelcomeScreen(
             StartButton(
                 onClick = {
                     if (player1Name.isBlank() || player2Name.isBlank()) {
-                        scope.launch { showSnackbar(AppStrings.EMPTY_NAME_ERROR) }
+                        scope.launch { showSnackbar(emptyNameError) }
                     } else {
                         onStartGame(player1Type, player1Name, player2Type, player2Name)
                     }
@@ -128,7 +131,7 @@ fun WelcomeScreen(
 private fun XOLogo() {
     Image(
         painter = painterResource(Res.drawable.tic_tac_toe),
-        contentDescription = AppStrings.APP_TITLE,
+        contentDescription = stringResource(Res.string.app_title),
         modifier = Modifier.size(120.dp),
     )
 }
@@ -142,6 +145,7 @@ private fun XOLogo() {
  * @param onTypeSelected callback when the user picks a new type
  * @param name           current name text
  * @param onNameChanged  callback when the name text changes
+ * @param playerTypes    list of available player type strings
  */
 @Composable
 private fun PlayerSetupColumn(
@@ -151,6 +155,7 @@ private fun PlayerSetupColumn(
     onTypeSelected: (String) -> Unit,
     name: String,
     onNameChanged: (String) -> Unit,
+    playerTypes: List<String>,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -164,6 +169,7 @@ private fun PlayerSetupColumn(
         PlayerTypeDropDown(
             selectedType = selectedType,
             onTypeSelected = onTypeSelected,
+            playerTypes = playerTypes,
         )
         PlayerNameTextField(
             label = nameLabel,
@@ -174,15 +180,17 @@ private fun PlayerSetupColumn(
 }
 
 /**
- * Dropdown button that lets the user choose a player type from [PLAYER_TYPES].
+ * Dropdown button that lets the user choose a player type.
  *
  * @param selectedType   the currently displayed player type
  * @param onTypeSelected callback invoked with the newly chosen type
+ * @param playerTypes    list of available player type strings
  */
 @Composable
 private fun PlayerTypeDropDown(
     selectedType: String,
     onTypeSelected: (String) -> Unit,
+    playerTypes: List<String>,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -203,7 +211,7 @@ private fun PlayerTypeDropDown(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            PLAYER_TYPES.forEach { type ->
+            playerTypes.forEach { type ->
                 DropdownMenuItem(
                     text = { Text(type) },
                     onClick = {
@@ -266,7 +274,7 @@ private fun StartButton(onClick: () -> Unit) {
             .height(52.dp),
     ) {
         Text(
-            text = AppStrings.START_BUTTON,
+            text = stringResource(Res.string.start_button),
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
         )
     }

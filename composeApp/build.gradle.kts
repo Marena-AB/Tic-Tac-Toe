@@ -1,4 +1,5 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+@file:Suppress("DEPRECATION")
+
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -6,6 +7,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    kotlin("plugin.serialization") version "2.1.0" // ADDED
 }
 
 kotlin {
@@ -14,17 +16,17 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
     listOf(
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
         }
     }
-    
+
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
@@ -39,10 +41,10 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-            // Navigation
-            implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha10")
-            // Material Icons
-            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
+            // Navigation(ADDED)
+            implementation(libs.navigation.compose)
+            // Material Icons(ADDED)
+            implementation(libs.material.icons.extended)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -52,12 +54,18 @@ kotlin {
 
 android {
     namespace = "edu.moravian.csci215.tic_tac_toe"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdk = libs.versions.android.compileSdk
+        .get()
+        .toInt()
 
     defaultConfig {
         applicationId = "edu.moravian.csci215.tic_tac_toe"
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk
+            .get()
+            .toInt()
+        targetSdk = libs.versions.android.targetSdk
+            .get()
+            .toInt()
         versionCode = 1
         versionName = "1.0"
     }
@@ -79,6 +87,4 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
-
 }
-

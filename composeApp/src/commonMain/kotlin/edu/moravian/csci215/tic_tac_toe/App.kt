@@ -12,50 +12,69 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import edu.moravian.csci215.tic_tac_toe.game.Board
 import edu.moravian.csci215.tic_tac_toe.game.Board.Companion.toStringRepresentation
+import kotlinx.serialization.Serializable
+import org.jetbrains.compose.resources.stringResource
+import tictactoe.composeapp.generated.resources.Res
+import tictactoe.composeapp.generated.resources.app_title
+import tictactoe.composeapp.generated.resources.back
 
-/** Navigation route constants for the three app screens. */
-internal object Routes {
-    const val WELCOME = "welcome"
+/** Route for the welcome screen. */
+@Serializable
+object WelcomeRoute
 
-    // Game route carries cumulative wins so scores persist across rounds.
-    const val GAME =
-        "game/{p1Type}/{p1Name}/{p2Type}/{p2Name}/{p1Wins}/{p2Wins}/{ties}"
+/**
+ * Route for the game screen, carrying all player info and cumulative scores.
+ *
+ * @param p1Type player 1 type string
+ * @param p1Name player 1 display name
+ * @param p2Type player 2 type string
+ * @param p2Name player 2 display name
+ * @param p1Wins cumulative wins for player 1
+ * @param p2Wins cumulative wins for player 2
+ * @param ties   cumulative ties
+ */
+@Serializable
+data class GameRoute(
+    val p1Type: String,
+    val p1Name: String,
+    val p2Type: String,
+    val p2Name: String,
+    val p1Wins: Int = 0,
+    val p2Wins: Int = 0,
+    val ties: Int = 0,
+)
 
-    // Game-over route also carries the serialized board string for the final board display.
-    const val GAME_OVER =
-        "gameOver/{p1Type}/{p1Name}/{p2Type}/{p2Name}/{p1Wins}/{p2Wins}/{ties}/{boardStr}"
-
-    /** Builds the game route (wins default to 0 for the first round). */
-    fun game(
-        p1Type: String,
-        p1Name: String,
-        p2Type: String,
-        p2Name: String,
-        p1Wins: Int = 0,
-        p2Wins: Int = 0,
-        ties: Int = 0,
-    ) = "game/$p1Type/$p1Name/$p2Type/$p2Name/$p1Wins/$p2Wins/$ties"
-
-    /** Builds the game-over route, encoding the board as a string. */
-    fun gameOver(
-        p1Type: String,
-        p1Name: String,
-        p2Type: String,
-        p2Name: String,
-        p1Wins: Int,
-        p2Wins: Int,
-        ties: Int,
-        board: Board,
-    ) = "gameOver/$p1Type/$p1Name/$p2Type/$p2Name/$p1Wins/$p2Wins/$ties/${board.toStringRepresentation()}"
-}
+/**
+ * Route for the game-over screen, carrying all player info, scores, and the
+ * serialized final board state.
+ *
+ * @param p1Type   player 1 type string
+ * @param p1Name   player 1 display name
+ * @param p2Type   player 2 type string
+ * @param p2Name   player 2 display name
+ * @param p1Wins   cumulative wins for player 1
+ * @param p2Wins   cumulative wins for player 2
+ * @param ties     cumulative ties
+ * @param boardStr serialized board string from [Board.toStringRepresentation]
+ */
+@Serializable
+data class GameOverRoute(
+    val p1Type: String,
+    val p1Name: String,
+    val p2Type: String,
+    val p2Name: String,
+    val p1Wins: Int,
+    val p2Wins: Int,
+    val ties: Int,
+    val boardStr: String,
+)
 
 /**
  * Root composable for the app. Sets up the theme, shared Scaffold, and the
@@ -67,14 +86,10 @@ internal object Routes {
 fun App() {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    val currentRoute = navController
-        .currentBackStackEntryAsState()
-        .value
-        ?.destination
-        ?.route
+    val currentDestination = navController.currentBackStackEntryAsState().value?.destination
 
     // Show the back-arrow top bar on every screen except the Welcome screen
-    val showTopBar = currentRoute != null && !currentRoute.startsWith(Routes.WELCOME)
+    val showTopBar = currentDestination?.route != WelcomeRoute::class.qualifiedName
 
     AppTheme {
         AppScaffold(
@@ -82,13 +97,13 @@ fun App() {
             topBar = {
                 if (showTopBar) {
                     TopAppBar(
-                        title = { Text(AppStrings.APP_TITLE) },
+                        title = { Text(stringResource(Res.string.app_title)) },
                         navigationIcon = {
                             IconButton(onClick = { navController.popBackStack() }) {
                                 // OS-specific Material back arrow (fonts.google.com/icons)
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = AppStrings.BACK,
+                                    contentDescription = stringResource(Res.string.back),
                                 )
                             }
                         },
@@ -103,104 +118,76 @@ fun App() {
         ) { paddingValues ->
             NavHost(
                 navController = navController,
-                startDestination = Routes.WELCOME,
+                startDestination = WelcomeRoute,
             ) {
-                composable(Routes.WELCOME) {
+                composable<WelcomeRoute> {
                     WelcomeScreen(
                         paddingValues = paddingValues,
                         onStartGame = { p1Type, p1Name, p2Type, p2Name ->
-                            navController.navigate(Routes.game(p1Type, p1Name, p2Type, p2Name))
+                            navController.navigate(
+                                GameRoute(p1Type, p1Name, p2Type, p2Name),
+                            )
                         },
                         showSnackbar = { message -> snackbarHostState.showSnackbar(message) },
                     )
                 }
 
-                composable(
-                    route = Routes.GAME,
-                    arguments = listOf(
-                        navArgument("p1Type") { type = NavType.StringType },
-                        navArgument("p1Name") { type = NavType.StringType },
-                        navArgument("p2Type") { type = NavType.StringType },
-                        navArgument("p2Name") { type = NavType.StringType },
-                        navArgument("p1Wins") { type = NavType.IntType },
-                        navArgument("p2Wins") { type = NavType.IntType },
-                        navArgument("ties") { type = NavType.IntType },
-                    ),
-                ) { backStack ->
-                    val p1Type = backStack.arguments?.getString("p1Type") ?: AppStrings.HUMAN
-                    val p1Name = backStack.arguments?.getString("p1Name") ?: ""
-                    val p2Type = backStack.arguments?.getString("p2Type") ?: AppStrings.HUMAN
-                    val p2Name = backStack.arguments?.getString("p2Name") ?: ""
-                    val p1Wins = backStack.arguments?.getInt("p1Wins") ?: 0
-                    val p2Wins = backStack.arguments?.getInt("p2Wins") ?: 0
-                    val ties = backStack.arguments?.getInt("ties") ?: 0
-
+                composable<GameRoute> { backStack ->
+                    val route = backStack.toRoute<GameRoute>()
                     GameScreen(
                         paddingValues = paddingValues,
-                        player1Type = p1Type,
-                        player1Name = p1Name,
-                        player2Type = p2Type,
-                        player2Name = p2Name,
-                        player1Wins = p1Wins,
-                        player2Wins = p2Wins,
-                        ties = ties,
+                        player1Type = route.p1Type,
+                        player1Name = route.p1Name,
+                        player2Type = route.p2Type,
+                        player2Name = route.p2Name,
+                        player1Wins = route.p1Wins,
+                        player2Wins = route.p2Wins,
+                        ties = route.ties,
                         showSnackbar = { message -> snackbarHostState.showSnackbar(message) },
                         onGameOver = { newP1Wins, newP2Wins, newTies, finalBoard ->
                             navController.navigate(
-                                Routes.gameOver(
-                                    p1Type,
-                                    p1Name,
-                                    p2Type,
-                                    p2Name,
-                                    newP1Wins,
-                                    newP2Wins,
-                                    newTies,
-                                    finalBoard,
+                                GameOverRoute(
+                                    p1Type = route.p1Type,
+                                    p1Name = route.p1Name,
+                                    p2Type = route.p2Type,
+                                    p2Name = route.p2Name,
+                                    p1Wins = newP1Wins,
+                                    p2Wins = newP2Wins,
+                                    ties = newTies,
+                                    boardStr = finalBoard.toStringRepresentation(),
                                 ),
                             )
                         },
                     )
                 }
-                composable(
-                    route = Routes.GAME_OVER,
-                    arguments = listOf(
-                        navArgument("p1Type") { type = NavType.StringType },
-                        navArgument("p1Name") { type = NavType.StringType },
-                        navArgument("p2Type") { type = NavType.StringType },
-                        navArgument("p2Name") { type = NavType.StringType },
-                        navArgument("p1Wins") { type = NavType.IntType },
-                        navArgument("p2Wins") { type = NavType.IntType },
-                        navArgument("ties") { type = NavType.IntType },
-                        navArgument("boardStr") { type = NavType.StringType },
-                    ),
-                ) { backStack ->
-                    val p1Type = backStack.arguments?.getString("p1Type") ?: AppStrings.HUMAN
-                    val p1Name = backStack.arguments?.getString("p1Name") ?: ""
-                    val p2Type = backStack.arguments?.getString("p2Type") ?: AppStrings.HUMAN
-                    val p2Name = backStack.arguments?.getString("p2Name") ?: ""
-                    val p1Wins = backStack.arguments?.getInt("p1Wins") ?: 0
-                    val p2Wins = backStack.arguments?.getInt("p2Wins") ?: 0
-                    val ties = backStack.arguments?.getInt("ties") ?: 0
-                    val boardStr = backStack.arguments?.getString("boardStr") ?: ""
-                    // Reconstruct the Board from its string representation
-                    val finalBoard = Board.createFromString(boardStr)
 
+                // ── Game Over Screen ───────────────────────────────────────
+                composable<GameOverRoute> { backStack ->
+                    val route = backStack.toRoute<GameOverRoute>()
                     GameOverScreen(
                         paddingValues = paddingValues,
-                        player1Type = p1Type,
-                        player1Name = p1Name,
-                        player2Type = p2Type,
-                        player2Name = p2Name,
-                        player1Wins = p1Wins,
-                        player2Wins = p2Wins,
-                        ties = ties,
-                        finalBoard = finalBoard,
+                        player1Type = route.p1Type,
+                        player1Name = route.p1Name,
+                        player2Type = route.p2Type,
+                        player2Name = route.p2Name,
+                        player1Wins = route.p1Wins,
+                        player2Wins = route.p2Wins,
+                        ties = route.ties,
+                        finalBoard = Board.createFromString(route.boardStr),
                         onPlayAgain = {
                             navController.navigate(
-                                Routes.game(p1Type, p1Name, p2Type, p2Name, p1Wins, p2Wins, ties),
+                                GameRoute(
+                                    p1Type = route.p1Type,
+                                    p1Name = route.p1Name,
+                                    p2Type = route.p2Type,
+                                    p2Name = route.p2Name,
+                                    p1Wins = route.p1Wins,
+                                    p2Wins = route.p2Wins,
+                                    ties = route.ties,
+                                ),
                             ) {
                                 // Pop game-over off the back stack so Back goes to Welcome
-                                popUpTo(Routes.WELCOME)
+                                popUpTo<WelcomeRoute>()
                             }
                         },
                     )

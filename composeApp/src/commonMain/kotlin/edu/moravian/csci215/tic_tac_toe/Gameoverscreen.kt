@@ -13,6 +13,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import edu.moravian.csci215.tic_tac_toe.game.Board
+import org.jetbrains.compose.resources.stringResource
+import tictactoe.composeapp.generated.resources.Res
+import tictactoe.composeapp.generated.resources.play_again_button
+import tictactoe.composeapp.generated.resources.score_header
+import tictactoe.composeapp.generated.resources.tie_result
+import tictactoe.composeapp.generated.resources.ties_label
+import tictactoe.composeapp.generated.resources.wins_suffix
 
 /**
  * The game-over screen shown after every round. Displays who won (or if it
@@ -44,9 +51,9 @@ fun GameOverScreen(
     onPlayAgain: () -> Unit,
 ) {
     val resultText = when {
-        finalBoard.hasWon('X') -> "$player1Name${AppStrings.WINS_SUFFIX}"
-        finalBoard.hasWon('O') -> "$player2Name${AppStrings.WINS_SUFFIX}"
-        else -> AppStrings.TIE_RESULT
+        finalBoard.hasWon('X') -> "$player1Name${stringResource(Res.string.wins_suffix)}"
+        finalBoard.hasWon('O') -> "$player2Name${stringResource(Res.string.wins_suffix)}"
+        else -> stringResource(Res.string.tie_result)
     }
 
     BoxWithConstraints(
@@ -56,12 +63,10 @@ fun GameOverScreen(
             .padding(paddingValues),
     ) {
         val isLandscape = maxWidth > maxHeight
-        // Shrink elements in landscape so everything fits without scrolling
         val boardSize = if (isLandscape) 140.dp else 200.dp
         val cardWidth = if (isLandscape) 160.dp else 200.dp
 
         if (isLandscape) {
-            // Landscape: headline on top, then board + score side by side, then button
             Column(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -86,7 +91,6 @@ fun GameOverScreen(
                 PlayAgainButton(onClick = onPlayAgain)
             }
         } else {
-            // Portrait: everything stacked vertically
             Column(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -213,13 +217,13 @@ private fun ScoreCard(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = AppStrings.SCORE_HEADER,
+                text = stringResource(Res.string.score_header),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary,
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
             ScorePill(label = player1Name, value = player1Wins)
-            ScorePill(label = AppStrings.TIES_LABEL, value = ties)
+            ScorePill(label = stringResource(Res.string.ties_label), value = ties)
             ScorePill(label = player2Name, value = player2Wins)
         }
     }
@@ -228,7 +232,7 @@ private fun ScoreCard(
 /**
  * A single score row showing a label and its count.
  *
- * @param label the player name or "Ties"
+ * @param label the player name or localized "Ties" string
  * @param value the count to display
  */
 @Composable
@@ -261,12 +265,10 @@ private fun PlayAgainButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
         shape = RoundedCornerShape(50),
-        modifier = Modifier
-            .defaultMinSize(minWidth = 160.dp)
-            .height(48.dp),
+        modifier = Modifier.defaultMinSize(minWidth = 160.dp).height(48.dp),
     ) {
         Text(
-            text = AppStrings.PLAY_AGAIN_BUTTON,
+            text = stringResource(Res.string.play_again_button),
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
         )
     }

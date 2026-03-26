@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_title">Tic-Tac-Toe</string>
+    <string name="back">Back</string>
+
+    <string name="human">Human</string>
+    <string name="easy_ai">Easy AI</string>
+    <string name="medium_ai">Medium AI</string>
+    <string name="hard_ai">Hard AI</string>
+
+    <string name="welcome_title">Welcome to Tic-Tac-Toe!</string>
+    <string name="player_1_label">Player 1</string>
+    <string name="player_2_label">Player 2</string>
+    <string name="player_1_name">Player 1 Name</string>
+    <string name="player_2_name">Player 2 Name</string>
+    <string name="start_button">Start!</string>
+    <string name="empty_name_error">Player names cannot be empty.</string>
+
+    <string name="spot_taken_error">That spot is already taken!</string>
+    <string name="ai_thinking_error">Wait for the AI to play.</string>
+
+    <string name="tie_result">It\'s a tie!</string>
+    <string name="wins_suffix"> wins!</string>
+    <string name="play_again_button">Play Again</string>
+    <string name="score_header">Overall Score</string>
+    <string name="ties_label">Ties</string>
+</resources>

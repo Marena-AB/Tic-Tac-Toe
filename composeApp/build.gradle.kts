@@ -42,7 +42,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             // Navigation(ADDED)
-            implementation(libs.navigation.compose)
+            implementation(libs.navigation.compose.v292)
             // Material Icons(ADDED)
             implementation(libs.material.icons.extended)
         }

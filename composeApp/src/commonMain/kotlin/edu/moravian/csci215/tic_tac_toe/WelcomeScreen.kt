@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -205,7 +207,11 @@ private fun PlayerTypeDropDown(
         ) {
             Text(selectedType)
             Spacer(modifier = Modifier.width(4.dp))
-            Text("▾")
+            // Material icon for the dropdown arrow — no hard-coded string needed
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
+            )
         }
         DropdownMenu(
             expanded = expanded,

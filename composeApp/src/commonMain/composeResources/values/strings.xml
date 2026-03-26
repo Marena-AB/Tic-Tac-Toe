@@ -14,9 +14,11 @@
     <string name="player_2_name">Player 2 Name</string>
     <string name="start_button">Start!</string>
     <string name="empty_name_error">Player names cannot be empty.</string>
+    <string name="dropdown_arrow">▾</string>
 
     <string name="spot_taken_error">That spot is already taken!</string>
     <string name="ai_thinking_error">Wait for the AI to play.</string>
+    <string name="turn_prompt_middle">, play your </string>
 
     <string name="tie_result">It\'s a tie!</string>
     <string name="wins_suffix"> wins!</string>
